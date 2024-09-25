@@ -1,0 +1,151 @@
+#include <Arduino.h>
+
+// Pines donde están conectados los LEDs
+const int LED1 = 2;   // Led Verde
+const int LED2 = 4;   // Led Amarillo
+const int LED3 = 5;   // Led Rojo
+
+// Declaración de las funciones antes de utilizarlas
+void mostrarMenu();
+void controlLed();
+void Encender_LED(int led, int tiempo_ms);
+void Leer_ADC();
+
+void setup() {
+  // Configurar los pines de los LEDs como salida
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  
+  // Iniciar la comunicación serial
+  Serial.begin(115200);
+  
+  // Esperar un poco para asegurarse de que el monitor serial esté listo
+  delay(1000);
+
+  // Mostrar el menú inicial
+  mostrarMenu();
+}
+
+void loop() {
+  // Verificar si hay datos disponibles en el monitor serial
+  if (Serial.available() > 0) {
+    int opcion = Serial.parseInt(); // Leer la opción ingresada
+
+    // Procesar la opción seleccionada
+    switch(opcion) {
+      case 1:
+        Leer_ADC(); // Llamar a la función para leer el ADC
+        break;
+      case 2:
+        controlLed(); // Llamar a la función para controlar los LEDs
+        break;
+      default:
+        Serial.println("Opción inválida. Intente de nuevo.");
+        Serial.print("\n");
+        mostrarMenu(); // Volver a mostrar el menú
+        break;
+    }
+  }
+}
+
+// Función para mostrar el menú
+void mostrarMenu() {
+  Serial.println("Menú:");
+  Serial.println("1: Lectura ADC");
+  Serial.println("2: Controlar LEDs");
+   Serial.print("\n");
+}
+
+// Función para controlar los LEDs
+void controlLed() {
+  Serial.println("Ingrese el LED a encender y el tiempo en milisegundos separados por una coma (Ej: 1,500):");
+  
+  // Esperar hasta que el usuario ingrese los datos y presione Enter
+  while (Serial.available() == 0);
+
+  String entrada = Serial.readStringUntil('\n'); // Leer la entrada del usuario hasta el salto de línea
+  entrada.trim(); // Eliminar espacios en blanco adicionales
+
+  int comaIndex = entrada.indexOf(','); // Encontrar la posición de la coma
+  
+  // Verificar si la entrada contiene una coma
+  if (comaIndex == -1) {
+    Serial.println("Formato incorrecto. Use una coma para separar el LED y el tiempo (Ej: 1,500).");
+    Serial.print("\n");
+    controlLed();
+    return;
+  }
+
+  // Separar el LED y el tiempo de la entrada
+  String ledStr = entrada.substring(0, comaIndex);
+  String tiempoStr = entrada.substring(comaIndex + 1);
+
+  int led = ledStr.toInt();
+  int tiempo = tiempoStr.toInt();
+
+  // Verificar si el número de LED y el tiempo son válidos
+  if ((led >= 1 && led <= 3) && (tiempo > 0)) {
+    // Llamar a la función para encender el LED
+    Encender_LED(led, tiempo);
+  } else {
+    Serial.println("Número de LED o tiempo inválido. Intente de nuevo.");
+    Serial.print("\n");
+    controlLed();
+    return;
+  }
+
+  // Volver a mostrar el menú después de controlar el LED
+  mostrarMenu();
+}
+
+// Función para leer el ADC
+void Leer_ADC() {
+  int valorADC = analogRead(34); // Asumiendo que el ADC está en el pin 34
+  float voltaje = valorADC * (3.3 / 4095.0); // Convertir la lectura ADC a voltaje (3.3V es la referencia y 4095 es el valor máximo del ADC de 12 bits)
+  
+  Serial.print("Voltaje: ");
+  Serial.print(voltaje);
+  Serial.println(" V");
+  Serial.print("\n");
+  
+  // Volver a mostrar el menú después de leer el ADC
+  mostrarMenu();
+}
+
+// Definición de la función Encender_LED
+void Encender_LED(int led, int tiempo_ms) {
+  int pinLED;
+
+  // Seleccionar el pin correspondiente al LED
+  switch (led) {
+    case 1:
+      pinLED = LED1;
+      break;
+    case 2:
+      pinLED = LED2;
+      break;
+    case 3:
+      pinLED = LED3;
+      break;
+  }
+
+  // Encender el LED
+  digitalWrite(pinLED, HIGH);
+  Serial.print("Encendiendo LED");
+  Serial.print(led);
+  Serial.print(" por ");
+  Serial.print(tiempo_ms);
+  Serial.println(" ms");
+  Serial.print("\n");
+
+  // Mantener el LED encendido por el tiempo indicado
+  vTaskDelay(tiempo_ms / portTICK_PERIOD_MS);
+
+  // Apagar el LED
+  digitalWrite(pinLED, LOW);
+  Serial.print("LED");
+  Serial.print(led);
+  Serial.println(" apagado");
+  Serial.print("\n");
+}
